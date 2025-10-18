@@ -11,14 +11,7 @@ def create_app():
     app.register_blueprint(api_bp, url_prefix='/api')
     setup_error_handlers(app)
     
-    # Initialize file watcher if MANGA_PATH is set
-    manga_path = os.environ.get('MANGA_PATH')
-    if manga_path:
-        try:
-            start_watcher()
-            print(f"File watcher initialized for MANGA_PATH: {manga_path}")
-        except Exception as e:
-            print(f"Failed to initialize file watcher: {e}")
+    initialize_watcher()
     
     return app
 
@@ -34,6 +27,15 @@ def setup_error_handlers(app):
     @app.errorhandler(400)
     def bad_request(error):
         return jsonify({'error': 'Bad request'}), 400
+
+def initialize_watcher():
+    manga_path = os.environ.get('MANGA_PATH')
+    if manga_path:
+        try:
+            start_watcher()
+            print(f"File watcher initialized for MANGA_PATH: {manga_path}")
+        except Exception as e:
+            print(f"Failed to initialize file watcher: {e}")
 
 if __name__ == '__main__':
     app = create_app()
