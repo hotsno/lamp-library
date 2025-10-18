@@ -1,6 +1,5 @@
 import os
 import threading
-import time
 from datetime import datetime
 from typing import List, Dict, Any, Optional
 from watchdog.observers import Observer
@@ -173,13 +172,10 @@ def initialize_watcher(manga_path: str) -> MangaFileWatcher:
     return _watcher_instance
 
 
-def start_watcher():
+def start_watcher(manga_path: str):
     """Start the global watcher"""
     global _watcher_instance
     if _watcher_instance is None:
-        manga_path = os.environ.get('MANGA_PATH')
-        if not manga_path:
-            raise ValueError("MANGA_PATH environment variable not set")
         _watcher_instance = MangaFileWatcher(manga_path)
     
     _watcher_instance.start_watching()

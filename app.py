@@ -30,12 +30,13 @@ def setup_error_handlers(app):
 
 def initialize_watcher():
     manga_path = os.environ.get('MANGA_PATH')
-    if manga_path:
-        try:
-            start_watcher()
-            print(f"File watcher initialized for MANGA_PATH: {manga_path}")
-        except Exception as e:
-            print(f"Failed to initialize file watcher: {e}")
+    if not manga_path:
+        raise ValueError("MANGA_PATH environment variable not set")
+    try:
+        start_watcher(manga_path)
+        print(f"File watcher initialized for MANGA_PATH: {manga_path}")
+    except Exception as e:
+        print(f"Failed to initialize file watcher: {e}")
 
 if __name__ == '__main__':
     app = create_app()
