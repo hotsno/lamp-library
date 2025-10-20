@@ -2,8 +2,12 @@ from flask import Flask, jsonify, request
 from flask_cors import CORS
 import os
 from datetime import datetime
+from dotenv import load_dotenv
 from routes.api import api_bp
-from file_watcher import start_watcher, stop_watcher
+from file_watcher import get_or_initialize_and_start_watcher
+
+# Load environment variables from .env file
+load_dotenv()
 
 def create_app():
     app = Flask(__name__)
@@ -11,7 +15,7 @@ def create_app():
     app.register_blueprint(api_bp, url_prefix='/api')
     setup_error_handlers(app)
     
-    initialize_watcher()
+    get_or_initialize_and_start_watcher()
     
     return app
 
@@ -27,16 +31,6 @@ def setup_error_handlers(app):
     @app.errorhandler(400)
     def bad_request(error):
         return jsonify({'error': 'Bad request'}), 400
-
-def initialize_watcher():
-    manga_path = os.environ.get('MANGA_PATH')
-    if not manga_path:
-        raise ValueError("MANGA_PATH environment variable not set")
-    try:
-        start_watcher(manga_path)
-        print(f"File watcher initialized for MANGA_PATH: {manga_path}")
-    except Exception as e:
-        print(f"Failed to initialize file watcher: {e}")
 
 if __name__ == '__main__':
     app = create_app()
