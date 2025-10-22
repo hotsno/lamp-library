@@ -1,5 +1,6 @@
 import os
 from datetime import datetime
+import time
 from typing import Dict, Any, Optional
 from dotenv import load_dotenv
 from watchdog.observers.polling import PollingObserver
@@ -12,34 +13,6 @@ class MangaFileWatcher(FileSystemEventHandler):
         self.manga_path = os.environ.get('MANGA_PATH')
         self.library_data = get_manga_library()
         self.observer = PollingObserver(timeout=5)
-        
-        # Initialize library data with current directory structure
-        # self._initialize_library_data()
-    
-    def _initialize_library_data(self):
-        """Initialize library data with current directory structure"""
-        try:
-            # Get all manga directories
-            manga_dirs = [name for name in os.listdir(self.manga_path) 
-                         if os.path.isdir(os.path.join(self.manga_path, name))]
-            
-            for manga_dir in manga_dirs:
-                manga_path = os.path.join(self.manga_path, manga_dir)
-                cbz_files = [name for name in os.listdir(manga_path) 
-                            if name.endswith('.cbz')]
-                
-                # Store manga directory info
-                self.library_data[manga_dir] = {
-                    'path': manga_path,
-                    'created_at': datetime.utcnow().isoformat(),
-                    'last_updated': datetime.utcnow().isoformat(),
-                    'cbz_files': cbz_files,
-                    'total_chapters': len(cbz_files)
-                }
-            
-            print(f"[WATCHER] Initialized library data with {len(manga_dirs)} manga directories")
-        except Exception as e:
-            print(f"[WATCHER] Error initializing library data: {e}")
     
     def _update_manga_directory(self, manga_dir: str):
         """Update manga directory information in library data"""
@@ -131,8 +104,20 @@ class MangaFileWatcher(FileSystemEventHandler):
                 manga_info['path'] = event.dest_path
                 manga_info['last_updated'] = datetime.utcnow().isoformat()
                 self.library_data[new_name] = manga_info
+            else:
+                self._update_manga_directory(new_name)
             
             print(f"[WATCHER] Directory renamed: {old_name} -> {new_name}")
+        elif self.is_second_level_file(event):
+            manga_dir = os.path.basename(os.path.dirname(event.src_path))
+            old_file_name = os.path.basename(event.src_path)
+            new_file_name = os.path.basename(event.dest_path)
+            
+            if new_file_name.endswith('.cbz'):
+                self._update_manga_directory(manga_dir)
+
+            
+            print(f"[WATCHER] File renamed: {old_file_name} -> {new_file_name}")
     
     def on_deleted(self, event):
         """Handle file/directory deletion events"""
@@ -173,24 +158,9 @@ class MangaFileWatcher(FileSystemEventHandler):
         except Exception as e:
             print(f"[WATCHER] Error stopping watcher: {e}")
             raise
-    
-    def get_library_data(self) -> Dict[str, Any]:
-        """Get the current library data"""
-        return self.library_data.to_dict()
-    
-    def force_save_library(self):
-        """Force save the library data to disk"""
-        self.library_data.force_save()
 
 # Global watcher instance
 _watcher_instance: Optional[MangaFileWatcher] = None
-
-def get_or_initialize_and_start_watcher() -> MangaFileWatcher:
-    """Get the global watcher instance"""
-    global _watcher_instance
-    if _watcher_instance is None:
-        return initialize_and_start_watcher()
-    return _watcher_instance
 
 def initialize_and_start_watcher() -> MangaFileWatcher:
     """Initialize the global watcher instance"""
@@ -200,17 +170,9 @@ def initialize_and_start_watcher() -> MangaFileWatcher:
     
     _watcher_instance = MangaFileWatcher()
     _watcher_instance.start_watching()
-    return _watcher_instance
+    _watcher_instance
 
-def get_library_data() -> Optional[Dict[str, Any]]:
-    """Get the current library data from the global watcher"""
-    global _watcher_instance
-    if _watcher_instance is not None:
-        return _watcher_instance.get_library_data()
-    return None
-
-def force_save_library():
-    """Force save the library data to disk"""
-    global _watcher_instance
-    if _watcher_instance is not None:
-        _watcher_instance.force_save_library()
+if __name__ == '__main__':
+    initialize_and_start_watcher()
+    while True:
+        time.sleep(5)

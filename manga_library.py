@@ -1,6 +1,8 @@
 import json
 import os
+import copy
 
+from handle_library_changes import handle_library_changes
 from throttler import Throttler
 
 class AutoSaveDict(dict):
@@ -37,7 +39,8 @@ class AutoSaveDict(dict):
 class MangaLibraryManager:
     def __init__(self):
         self.file_path = os.path.join(os.path.dirname(__file__), 'manga_library.json')
-        self.manga_library = AutoSaveDict(self.save_manga_library, self.load_manga_library())
+        self.manga_library = AutoSaveDict(self.on_save, self.load_manga_library())
+        self.previous_manga_library = copy.deepcopy(self.manga_library.copy())
         self.save_throttler = Throttler(timeout=0.5)
     
     def get_manga_library(self):
@@ -48,11 +51,19 @@ class MangaLibraryManager:
             with open(self.file_path, 'r') as f:
                 return json.load(f)
         return {}
-    
-    def save_manga_library(self):
-        def to_throttle():
+
+    def on_save(self):
+        def save_to_file():
             with open(self.file_path, 'w') as f:
                 json.dump(self.manga_library, f, indent=2)
+
+        def to_throttle():
+            save_to_file()
+
+            manga_library = copy.deepcopy(self.manga_library.copy())
+            handle_library_changes(self.previous_manga_library, manga_library)
+
+            self.previous_manga_library = manga_library
 
         self.save_throttler.throttled_call(to_throttle)
 

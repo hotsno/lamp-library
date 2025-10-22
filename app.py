@@ -4,7 +4,7 @@ import os
 from datetime import datetime
 from dotenv import load_dotenv
 from routes.api import api_bp
-from file_watcher import get_or_initialize_and_start_watcher
+from file_watcher import initialize_and_start_watcher
 
 # Load environment variables from .env file
 load_dotenv()
@@ -15,7 +15,7 @@ def create_app():
     app.register_blueprint(api_bp, url_prefix='/api')
     setup_error_handlers(app)
     
-    get_or_initialize_and_start_watcher()
+    initialize_and_start_watcher()
     
     return app
 
