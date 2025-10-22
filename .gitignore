@@ -7,3 +7,4 @@ __pycache__/
 
 .env
 manga_library.json
+.DS_Store

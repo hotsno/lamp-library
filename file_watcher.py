@@ -1,7 +1,7 @@
 import os
+import logging
 from datetime import datetime
 import time
-from typing import Dict, Any, Optional
 from dotenv import load_dotenv
 from watchdog.observers.polling import PollingObserver
 from watchdog.events import FileSystemEventHandler
@@ -13,9 +13,9 @@ class MangaFileWatcher(FileSystemEventHandler):
         self.manga_path = os.environ.get('MANGA_PATH')
         self.library_data = get_manga_library()
         self.observer = PollingObserver(timeout=5)
+        self.logger = logging.getLogger(__name__)
     
     def _update_manga_directory(self, manga_dir: str):
-        """Update manga directory information in library data"""
         try:
             manga_path = os.path.join(self.manga_path, manga_dir)
 
@@ -42,10 +42,9 @@ class MangaFileWatcher(FileSystemEventHandler):
             self.library_data[manga_dir] = manga_info
             
         except Exception as e:
-            print(f"[WATCHER] Error updating manga directory {manga_dir}: {e}")
+            self.logger.error(f"Error updating manga directory {manga_dir}: {e}")
     
     def is_first_level_directory(self, event) -> bool:
-        """Check if the event is a first level directory"""
         if not event.is_directory:
             return
         
@@ -61,7 +60,6 @@ class MangaFileWatcher(FileSystemEventHandler):
         return False
 
     def is_second_level_file(self, event) -> bool:
-        """Check if the event is a second level file"""
         if event.is_directory:
             return
         
@@ -77,12 +75,11 @@ class MangaFileWatcher(FileSystemEventHandler):
         return False
     
     def on_created(self, event):
-        """Handle file/directory creation events"""
         if self.is_first_level_directory(event):
             manga_dir = os.path.basename(event.src_path)
 
             self._update_manga_directory(manga_dir)
-            print(f"[WATCHER] New directory created: {event.src_path}")
+            self.logger.info(f"New directory created: {event.src_path}")
 
         elif self.is_second_level_file(event):
             manga_dir = os.path.basename(os.path.dirname(event.src_path))
@@ -91,10 +88,9 @@ class MangaFileWatcher(FileSystemEventHandler):
             if file_name.endswith('.cbz'):
                 self._update_manga_directory(manga_dir)
 
-            print(f"[WATCHER] File added to subdirectory: {event.src_path}")
+            self.logger.info(f"File added to subdirectory: {event.src_path}")
     
     def on_moved(self, event):
-        """Handle file/directory move/rename events"""
         if self.is_first_level_directory(event):
             old_name = os.path.basename(event.src_path)
             new_name = os.path.basename(event.dest_path)
@@ -107,7 +103,7 @@ class MangaFileWatcher(FileSystemEventHandler):
             else:
                 self._update_manga_directory(new_name)
             
-            print(f"[WATCHER] Directory renamed: {old_name} -> {new_name}")
+            self.logger.info(f"Directory renamed: {old_name} -> {new_name}")
         elif self.is_second_level_file(event):
             manga_dir = os.path.basename(os.path.dirname(event.src_path))
             old_file_name = os.path.basename(event.src_path)
@@ -117,17 +113,16 @@ class MangaFileWatcher(FileSystemEventHandler):
                 self._update_manga_directory(manga_dir)
 
             
-            print(f"[WATCHER] File renamed: {old_file_name} -> {new_file_name}")
+            self.logger.info(f"File renamed: {old_file_name} -> {new_file_name}")
     
     def on_deleted(self, event):
-        """Handle file/directory deletion events"""
         if self.is_first_level_directory(event):
             manga_dir = os.path.basename(event.src_path)
 
             if manga_dir in self.library_data:
                 del self.library_data[manga_dir]
 
-            print(f"[WATCHER] Directory deleted: {event.src_path}")
+            self.logger.info(f"Directory deleted: {event.src_path}")
 
         elif self.is_second_level_file(event):
             manga_dir = os.path.basename(os.path.dirname(event.src_path))
@@ -136,34 +131,30 @@ class MangaFileWatcher(FileSystemEventHandler):
             if file_name.endswith('.cbz'):
                 self._update_manga_directory(manga_dir)
             
-            print(f"[WATCHER] File deleted from subdirectory: {event.src_path}")
+            self.logger.info(f"File deleted from subdirectory: {event.src_path}")
     
     def start_watching(self):
-        """Start watching the manga directory"""
         try:
             self.observer.schedule(self, self.manga_path, recursive=True)
             self.observer.start()
-            print(f"[WATCHER] Started watching: {self.manga_path}")
+            self.logger.info(f"Started watching: {self.manga_path}")
         except Exception as e:
-            print(f"[WATCHER] Error starting watcher: {e}")
+            self.logger.error(f"Error starting watcher: {e}")
             raise
 
     def stop_watching(self):
-        """Stop watching the manga directory"""
         try:
             self.observer.stop()
             self.observer.join()
-            self._log_event('watcher_stopped', self.manga_path)
-            print("[WATCHER] Stopped watching")
+            self.logger.info("Stopped watching")
         except Exception as e:
-            print(f"[WATCHER] Error stopping watcher: {e}")
+            self.logger.error(f"Error stopping watcher: {e}")
             raise
 
 # Global watcher instance
-_watcher_instance: Optional[MangaFileWatcher] = None
+_watcher_instance = None
 
 def initialize_and_start_watcher() -> MangaFileWatcher:
-    """Initialize the global watcher instance"""
     global _watcher_instance
     if _watcher_instance is not None:
         _watcher_instance.stop_watching()

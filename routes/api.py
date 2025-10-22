@@ -3,7 +3,6 @@ from datetime import datetime
 import os
 import zipfile
 import re
-from file_watcher import get_library_data
 
 api_bp = Blueprint('api', __name__)
 
@@ -19,16 +18,17 @@ def api_home():
 @api_bp.route('/library', methods=['GET'])
 def get_library():
     """Get the library with detailed information from JSONDict"""
-    library_data = get_library_data()
-    if library_data is None:
-        return jsonify({'error': 'Library data not available'}), 500
+    # library_data = get_library_data()
+    # if library_data is None:
+    #     return jsonify({'error': 'Library data not available'}), 500
     
-    # Return library data with manga information
-    return jsonify({
-        'library': library_data,
-        'total_manga': len(library_data),
-        'timestamp': datetime.utcnow().isoformat()
-    }), 200
+    # # Return library data with manga information
+    # return jsonify({
+    #     'library': library_data,
+    #     'total_manga': len(library_data),
+    #     'timestamp': datetime.utcnow().isoformat()
+    # }), 200
+    pass
 
 @api_bp.route('/chapters/<string:manga_id>', methods=['GET'])
 def get_chapters(manga_id):
